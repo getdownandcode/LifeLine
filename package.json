@@ -1,0 +1,35 @@
+{
+  "name": "lifeline",
+  "version": "2.0.0",
+  "description": "Blood bank and organ matching platform with gateway, matching, inventory, notification, analytics, and saga services.",
+  "private": true,
+  "type": "commonjs",
+  "bin": {
+    "lifeline": "scripts/lifeline.js"
+  },
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js tests/integration/*.test.js",
+    "lifeline": "node scripts/lifeline.js",
+    "start:gateway": "node services/gateway/src/server.js",
+    "start:matching": "node services/matching/src/server.js",
+    "start:inventory": "node services/inventory/src/server.js",
+    "start:notification": "node services/notification/src/server.js",
+    "start:analytics": "node services/analytics/src/server.js",
+    "start:saga": "node services/saga/src/server.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.4",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "uuid": "^11.0.5"
+  }
+}

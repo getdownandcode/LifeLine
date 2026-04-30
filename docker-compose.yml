@@ -1,0 +1,169 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: lifeline-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-change_me_mongo}
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: lifeline-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: lifeline-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-change_me_rabbit}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: lifeline-gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token}
+      MATCHING_SERVICE_URL: http://matching-service:3001
+      INVENTORY_SERVICE_URL: http://inventory-service:3002
+      NOTIFICATION_SERVICE_URL: http://notification-service:3003
+      ANALYTICS_SERVICE_URL: http://analytics-service:3004
+      SAGA_SERVICE_URL: http://saga-service:3005
+    ports:
+      - "3000:3000"
+    depends_on:
+      matching-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  matching-service:
+    build:
+      context: .
+      dockerfile: services/matching/Dockerfile
+    container_name: lifeline-matching
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MATCHING_PORT: 3001
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_matching?authSource=admin
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    container_name: lifeline-inventory
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      INVENTORY_PORT: 3002
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_inventory?authSource=admin
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification/Dockerfile
+    container_name: lifeline-notification
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NOTIFICATION_PORT: 3003
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_notifications?authSource=admin
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: services/analytics/Dockerfile
+    container_name: lifeline-analytics
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ANALYTICS_PORT: 3004
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_analytics?authSource=admin
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  saga-service:
+    build:
+      context: .
+      dockerfile: services/saga/Dockerfile
+    container_name: lifeline-saga
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      SAGA_PORT: 3005
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
+  redis_data:
+  rabbitmq_data:
