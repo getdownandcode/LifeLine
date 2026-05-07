@@ -8,6 +8,13 @@ async function createPublisher(amqpUrl) {
   await channel.assertExchange(EXCHANGES.DIRECT, 'direct', { durable: true });
   await channel.assertExchange(EXCHANGES.FANOUT, 'fanout', { durable: true });
   return {
+    isConnected() {
+      return Boolean(connection && channel);
+    },
+    async close() {
+      await channel.close();
+      await connection.close();
+    },
     publish(exchange, routingKey, payload) {
       return channel.publish(exchange, routingKey, Buffer.from(JSON.stringify({
         eventId: randomUUID(),

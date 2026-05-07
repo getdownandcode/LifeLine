@@ -3,8 +3,12 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const pinoHttp = require('pino-http');
+const { validateConfig } = require('../../../shared/config/validator');
 const { createLogger } = require('../../../shared/utils/logger');
+const { correlationIdMiddleware } = require('../../../shared/middleware/correlationId');
 const { notFound, errorHandler } = require('../../../shared/middleware/errorHandler');
+const { createHealthHandlers } = require('../../../shared/middleware/health');
+const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
 const { auth } = require('./middleware/auth');
 const { limiter } = require('./middleware/rateLimiter');
 const { createProxyRouter } = require('./routes/proxy');
@@ -33,12 +37,14 @@ function createApp() {
   app.use(helmet());
   app.use(cors());
   app.use(express.json());
-  app.use(pinoHttp({ logger }));
+  app.use(correlationIdMiddleware());
+  app.use(pinoHttp({ logger, customProps: (req) => ({ correlationId: req.correlationId }) }));
 
+  const health = createHealthHandlers({ service: 'gateway' });
   app.use(limiter());
   app.get('/', (_req, res) => res.json({ success: true, data: gatewayInfo() }));
-  app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'gateway' }));
-  app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
+  app.get('/health', health.live);
+  app.get('/ready', health.ready);
   app.use(auth);
   app.use(createProxyRouter());
   app.use(notFound);
@@ -48,9 +54,13 @@ function createApp() {
 }
 
 async function start() {
+  const config = validateConfig({ portEnv: 'GATEWAY_PORT', defaultPort: 3000, requireAuthSecrets: true });
   const app = createApp();
-  const port = Number(process.env.GATEWAY_PORT) || 3000;
-  app.listen(port, () => logger.info(`api-gateway listening on ${port}`));
+  const shutdown = createShutdownHandler({ logger });
+  const server = app.listen(config.port, () => logger.info(`api-gateway listening on ${config.port}`));
+  shutdown.registerServer(server);
+  shutdown.start();
+  return server;
 }
 
 if (require.main === module) {

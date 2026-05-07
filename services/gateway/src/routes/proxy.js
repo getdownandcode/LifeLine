@@ -33,6 +33,7 @@ function createProxyRouter() {
         data: req.body,
         params: req.query,
         headers: {
+          'X-Correlation-ID': req.correlationId,
           'x-internal-token': process.env.INTERNAL_SERVICE_TOKEN,
           'x-request-id': req.header('x-request-id')
         },

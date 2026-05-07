@@ -58,8 +58,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret}
-      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token}
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret_at_least_32_chars}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       MATCHING_SERVICE_URL: http://matching-service:3001
       INVENTORY_SERVICE_URL: http://inventory-service:3002
       NOTIFICATION_SERVICE_URL: http://notification-service:3003

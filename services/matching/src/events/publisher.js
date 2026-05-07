@@ -2,7 +2,8 @@ const { randomUUID } = require('crypto');
 const { EXCHANGES } = require('../../../../shared/constants/eventTypes');
 
 class EventPublisher {
-  constructor(channel) {
+  constructor(connection, channel) {
+    this.connection = connection;
     this.channel = channel;
   }
 
@@ -13,7 +14,18 @@ class EventPublisher {
     await channel.assertExchange(EXCHANGES.DIRECT, 'direct', { durable: true });
     await channel.assertExchange(EXCHANGES.FANOUT, 'fanout', { durable: true });
     await channel.assertExchange(EXCHANGES.TOPIC, 'topic', { durable: true });
-    return new EventPublisher(channel);
+    return new EventPublisher(connection, channel);
+  }
+
+  isConnected() {
+    return Boolean(this.connection && this.channel);
+  }
+
+  async close() {
+    if (this.channel) await this.channel.close();
+    if (this.connection) await this.connection.close();
+    this.channel = null;
+    this.connection = null;
   }
 
   publish(exchange, routingKey, payload, options = {}) {

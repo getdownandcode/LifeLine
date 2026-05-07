@@ -33,6 +33,15 @@ Check the gateway:
 lifeline health
 ```
 
+The gateway and backing services also expose operational health endpoints:
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3000/ready
+```
+
+`/health` is the liveness check. `/ready` includes configured dependency status and returns `503` if a dependency such as MongoDB, Redis, or RabbitMQ is unavailable.
+
 ## 2. Seed demo data
 
 Use the built-in demo seed before trying matching and inventory commands:
@@ -150,6 +159,20 @@ lifeline analytics metrics
 ```
 
 ## Common errors
+
+`Config Error: <PORT_NAME> must be a valid number between 1-65535` means a service port environment variable is invalid. Fix the value before starting the service.
+
+`Config Error: JWT_SECRET is required in production` means the gateway is running with `NODE_ENV=production` and no gateway secret is configured.
+
+`Config Error: JWT_SECRET must be at least 32 characters when STRICT_SECRET_VALIDATION=true` means strict secret validation is enabled. Either provide stronger secrets or set `STRICT_SECRET_VALIDATION=false` for local compatibility.
+
+Use `X-Correlation-ID` when debugging a workflow across services:
+
+```bash
+curl -H "X-Correlation-ID: debug-001" http://localhost:3000/health
+```
+
+The same value is returned in the response and included in request logs.
 
 `400 Invalid hospitalId: 1001` means the command needs a real 24-character MongoDB ObjectId.
 
