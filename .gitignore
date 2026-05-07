@@ -32,3 +32,4 @@ Thumbs.db
 .idea/
 .codex
 .github/
+.dockerignore
