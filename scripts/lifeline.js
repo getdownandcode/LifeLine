@@ -36,18 +36,83 @@ const style = {
   gray: ansi('90')
 };
 
-function box(lines) {
-  const width = Math.max(...lines.map((line) => stripAnsi(line).length), 56);
-  const top = `+${'-'.repeat(width + 2)}+`;
-  const body = lines.map((line) => {
-    const padding = width - stripAnsi(line).length;
-    return `| ${line}${' '.repeat(padding)} |`;
-  });
-  return [top, ...body, top].join('\n');
-}
-
 function stripAnsi(value) {
   return String(value).replace(/\u001b\[[0-9;]*m/g, '');
+}
+
+function hero() {
+  const heart = `
+     ${style.red('██  ██')}
+    ${style.red('████████')}
+     ${style.red('██████')}
+      ${style.red('████')}
+       ${style.red('██')}
+  `;
+  const art = `
+  ${style.red('   _      _  __      _      _             ')}
+  ${style.red('  | |    (_)/ _|    | |    (_)            ')}
+  ${style.red('  | |     _| |_ ___ | |     _ _ __   ___  ')}
+  ${style.red('  | |    | |  _/ _ \\| |    | | \'_ \\ / _ \\ ')}
+  ${style.red('  | |____| | ||  __/| |____| | | | |  __/ ')}
+  ${style.red('  |______|_|_| \\___|______/|_|_| |_|\\___| ')}
+  `;
+
+  console.log(heart);
+  console.log(art);
+  console.log(`  ${style.bold('LifeLine CLI')} ${style.dim(`v${pkg.version}`)}`);
+  console.log(`  Emergency Response & Resource Management\n`);
+  
+  console.log(`  ${style.bold('Getting Started:')}`);
+  console.log(`  ${style.dim('•')} ${style.cyan('health')}${' '.repeat(10)} Check service connectivity`);
+  console.log(`  ${style.dim('•')} ${style.cyan('demo seed')}${' '.repeat(7)} Setup initial test data`);
+  console.log(`  ${style.dim('•')} ${style.cyan('demo run')}${' '.repeat(8)} Execute end-to-end simulation`);
+  console.log(`  ${style.dim('•')} ${style.cyan('help')}${' '.repeat(12)} View all available commands`);
+  console.log(`\n  ${style.dim('Type commands below or use "exit" to quit.')}\n`);
+}
+
+async function interactiveShell(clientFactory) {
+  hero();
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: `${style.green('lifeline')} ${style.dim('›')} `
+  });
+
+  rl.prompt();
+
+  rl.on('line', async (line) => {
+    const inputLine = line.trim();
+    if (!inputLine) {
+      rl.prompt();
+      return;
+    }
+
+    if (inputLine === 'exit' || inputLine === 'quit') {
+      rl.close();
+      return;
+    }
+
+    if (inputLine === 'clear') {
+      console.clear();
+      hero();
+      rl.prompt();
+      return;
+    }
+
+    const args = inputLine.split(/\s+/);
+    try {
+      await main(args, clientFactory, true);
+    } catch (error) {
+      console.error(`\n${style.red('Error:')} ${error.message}`);
+    }
+    console.log();
+    rl.prompt();
+  });
+
+  rl.on('close', () => {
+    console.log(`\n${style.dim('Stay safe. Goodbye!')}`);
+    process.exit(0);
+  });
 }
 
 function command(name, description) {
@@ -63,11 +128,7 @@ function section(title, lines) {
 }
 
 function header() {
-  return box([
-    `${style.bold(style.green(`LifeLine CLI v${pkg.version}`))}`,
-    'Emergency blood inventory, donor matching, and hospital workflow tools',
-    style.dim('Run lifeline help, then lifeline <command> --help when you need details')
-  ]);
+  return `  ${style.bold(style.red('❤️'))} ${style.bold(style.red(`LifeLine CLI v${pkg.version}`))} ${style.dim('| Emergency blood & organ matching platform')}`;
 }
 
 const commandHelp = {
@@ -75,7 +136,7 @@ const commandHelp = {
 ${header()}
 
 ${section('Emergency Requests', [
-    command('lifeline emergency create', 'Create a patient emergency request and send it to matching')
+    command('emergency create', 'Create a patient emergency request and send it to matching')
   ])}
 
 ${section('Required Fields', [
@@ -93,8 +154,8 @@ ${section('Optional Fields', [
   ])}
 
 ${section('Examples', [
-    '  lifeline emergency create --patient alice --blood A+ --organ kidney --hospital 660000000000000000000101 --lat 19.076 --lng 72.8777 --urgency critical',
-    '  lifeline emergency create'
+    '  emergency create --patient alice --blood A+ --organ kidney --hospital 660000000000000000000101 --lat 19.076 --lng 72.8777 --urgency critical',
+    '  emergency create'
   ])}
 
 When you run this command in an interactive terminal, LifeLine asks for any missing fields.
@@ -104,9 +165,9 @@ When you run this command in an interactive terminal, LifeLine asks for any miss
 ${header()}
 
 ${section('Donor Matching', [
-    command('lifeline donors nearby', 'Find compatible available donors around a location'),
-    command('lifeline match run <requestId>', 'Run the matching algorithm for an emergency request'),
-    command('lifeline match status <requestId>', 'Read current matching status')
+    command('donors nearby', 'Find compatible available donors around a location'),
+    command('match run <requestId>', 'Run the matching algorithm for an emergency request'),
+    command('match status <requestId>', 'Read current matching status')
   ])}
 
 ${section('Nearby Donor Options', [
@@ -119,9 +180,9 @@ ${section('Nearby Donor Options', [
   ])}
 
 ${section('Examples', [
-    '  lifeline donors nearby --lat 19.076 --lng 72.8777 --radius 25000 --blood A+ --organ kidney --limit 5',
-    '  lifeline match run 607f1f77bcf86cd799439011',
-    '  lifeline match status 607f1f77bcf86cd799439011'
+    '  donors nearby --lat 19.076 --lng 72.8777 --radius 25000 --blood A+ --organ kidney --limit 5',
+    '  match run 607f1f77bcf86cd799439011',
+    '  match status 607f1f77bcf86cd799439011'
   ])}
 `,
 
@@ -129,10 +190,10 @@ ${section('Examples', [
 ${header()}
 
 ${section('Inventory', [
-    command('lifeline inventory stock <hospitalId>', 'Show hospital stock by blood type'),
-    command('lifeline inventory reserve <hospitalId>', 'Reserve units for a request'),
-    command('lifeline inventory update <hospitalId>', 'Add or subtract stock'),
-    command('lifeline inventory alerts', 'Show hospitals below a stock threshold')
+    command('inventory stock <hospitalId>', 'Show hospital stock by blood type'),
+    command('inventory reserve <hospitalId>', 'Reserve units for a request'),
+    command('inventory update <hospitalId>', 'Add or subtract stock'),
+    command('inventory alerts', 'Show hospitals below a stock threshold')
   ])}
 
 ${section('Reserve Options', [
@@ -152,10 +213,10 @@ ${section('Alert Options', [
   ])}
 
 ${section('Examples', [
-    '  lifeline inventory stock 660000000000000000000101',
-    '  lifeline inventory reserve 660000000000000000000101 --blood A+ --units 1',
-    '  lifeline inventory update 660000000000000000000101 --blood A+ --units +5 --lat 19.076 --lng 72.8777',
-    '  lifeline inventory alerts --threshold 3'
+    '  inventory stock 660000000000000000000101',
+    '  inventory reserve 660000000000000000000101 --blood A+ --units 1',
+    '  inventory update 660000000000000000000101 --blood A+ --units +5 --lat 19.076 --lng 72.8777',
+    '  inventory alerts --threshold 3'
   ])}
 `,
 
@@ -163,10 +224,10 @@ ${section('Examples', [
 ${header()}
 
 ${section('Notifications', [
-    command('lifeline notify sms', 'Send an SMS notification'),
-    command('lifeline notify email', 'Send an email notification'),
-    command('lifeline notify push', 'Send a push notification'),
-    command('lifeline notify broadcast', 'Send a broadcast notification')
+    command('notify sms', 'Send an SMS notification'),
+    command('notify email', 'Send an email notification'),
+    command('notify push', 'Send a push notification'),
+    command('notify broadcast', 'Send a broadcast notification')
   ])}
 
 ${section('Options', [
@@ -177,9 +238,9 @@ ${section('Options', [
   ])}
 
 ${section('Examples', [
-    '  lifeline notify sms --to +911111111111 --message "Compatible donor found"',
-    '  lifeline notify email --to admin@hospital.com --subject "Emergency" --message "Review the request"',
-    '  lifeline notify broadcast --message "Maintenance starts at 8 PM"'
+    '  notify sms --to +911111111111 --message "Compatible donor found"',
+    '  notify email --to admin@hospital.com --subject "Emergency" --message "Review the request"',
+    '  notify broadcast --message "Maintenance starts at 8 PM"'
   ])}
 `,
 
@@ -187,8 +248,8 @@ ${section('Examples', [
 ${header()}
 
 ${section('Analytics', [
-    command('lifeline analytics metrics', 'View operational metrics'),
-    command('lifeline analytics event', 'Record an audit or business event')
+    command('analytics metrics', 'View operational metrics'),
+    command('analytics event', 'Record an audit or business event')
   ])}
 
 ${section('Event Options', [
@@ -197,8 +258,8 @@ ${section('Event Options', [
   ])}
 
 ${section('Examples', [
-    '  lifeline analytics metrics',
-    '  lifeline analytics event --event emergency.created --request 607f1f77bcf86cd799439011'
+    '  analytics metrics',
+    '  analytics event --event emergency.created --request 607f1f77bcf86cd799439011'
   ])}
 `,
 
@@ -206,8 +267,8 @@ ${section('Examples', [
 ${header()}
 
 ${section('Workflow Orchestration', [
-    command('lifeline saga history <requestId>', 'Show workflow history for an emergency request'),
-    command('lifeline saga event', 'Record a workflow event')
+    command('saga history <requestId>', 'Show workflow history for an emergency request'),
+    command('saga event', 'Record a workflow event')
   ])}
 
 ${section('Event Options', [
@@ -216,8 +277,8 @@ ${section('Event Options', [
   ])}
 
 ${section('Examples', [
-    '  lifeline saga history 607f1f77bcf86cd799439011',
-    '  lifeline saga event --event emergency.created --request 607f1f77bcf86cd799439011'
+    '  saga history 607f1f77bcf86cd799439011',
+    '  saga event --event emergency.created --request 607f1f77bcf86cd799439011'
   ])}
 `,
 
@@ -225,14 +286,14 @@ ${section('Examples', [
 ${header()}
 
 ${section('Demo', [
-    command('lifeline demo seed', 'Seed demo donors and inventory directly into MongoDB'),
-    command('lifeline demo run', 'Run a complete emergency, match, reserve, notify, and metrics flow')
+    command('demo seed', 'Seed demo donors and inventory directly into MongoDB'),
+    command('demo run', 'Run a complete emergency, match, reserve, notify, and metrics flow')
   ])}
 
 ${section('Examples', [
-    '  lifeline demo seed',
-    '  lifeline demo run',
-    '  lifeline demo run --json'
+    '  demo seed',
+    '  demo run',
+    '  demo run --json'
   ])}
 `,
 
@@ -240,12 +301,12 @@ ${section('Examples', [
 ${header()}
 
 ${section('Blood Compatibility', [
-    command('lifeline compatibility <bloodType>', 'Show compatible donor blood types')
+    command('compatibility <bloodType>', 'Show compatible donor blood types')
   ])}
 
 ${section('Examples', [
-    '  lifeline compatibility A+',
-    '  lifeline compatibility O- --json'
+    '  compatibility A+',
+    '  compatibility O- --json'
   ])}
 `
 };
@@ -257,41 +318,33 @@ function usage(commandName = null) {
   return `
 ${header()}
 
-${section('Start Here', [
-    command('lifeline', 'Open this professional command overview'),
-    command('lifeline help', 'Show all commands and workflows'),
-    command('lifeline health', 'Check the API gateway and connected services'),
-    command('lifeline demo seed', 'Create sample donors and inventory'),
-    command('lifeline demo run', 'Run the complete demo workflow')
-  ])}
-
 ${section('Core Commands', [
-    command('lifeline health', 'Service health check'),
-    command('lifeline token', 'Generate a short-lived JWT for API debugging'),
-    command('lifeline compatibility <bloodType>', 'Check compatible donor blood types'),
-    command('lifeline version', 'Print CLI version')
+    command('health', 'Service health check'),
+    command('token', 'Generate a short-lived JWT for API debugging'),
+    command('compatibility <bloodType>', 'Check compatible donor blood types'),
+    command('version', 'Print CLI version')
   ])}
 
 ${section('Emergency And Matching', [
-    command('lifeline emergency create', 'Create an emergency request. Prompts for missing fields in TTY mode'),
-    command('lifeline donors nearby', 'Find compatible donors near a location'),
-    command('lifeline match run <requestId>', 'Run matching for a request'),
-    command('lifeline match status <requestId>', 'Check match status')
+    command('emergency create', 'Create an emergency request. Prompts for missing fields'),
+    command('donors nearby', 'Find compatible donors near a location'),
+    command('match run <requestId>', 'Run matching for a request'),
+    command('match status <requestId>', 'Check match status')
   ])}
 
 ${section('Inventory', [
-    command('lifeline inventory stock <hospitalId>', 'View hospital stock'),
-    command('lifeline inventory reserve <hospitalId>', 'Reserve blood units'),
-    command('lifeline inventory update <hospitalId>', 'Adjust stock levels'),
-    command('lifeline inventory alerts', 'Find low-stock hospitals')
+    command('inventory stock <hospitalId>', 'View hospital stock'),
+    command('inventory reserve <hospitalId>', 'Reserve blood units'),
+    command('inventory update <hospitalId>', 'Adjust stock levels'),
+    command('inventory alerts', 'Find low-stock hospitals')
   ])}
 
 ${section('Communication And Observability', [
-    command('lifeline notify sms|email|push|broadcast', 'Send operational notifications'),
-    command('lifeline analytics metrics', 'View platform metrics'),
-    command('lifeline analytics event', 'Record an analytics event'),
-    command('lifeline saga history <requestId>', 'Inspect workflow history'),
-    command('lifeline saga event', 'Record a workflow event')
+    command('notify sms|email|push|broadcast', 'Send operational notifications'),
+    command('analytics metrics', 'View platform metrics'),
+    command('analytics event', 'Record an analytics event'),
+    command('saga history <requestId>', 'Inspect workflow history'),
+    command('saga event', 'Record a workflow event')
   ])}
 
 ${section('Global Options', [
@@ -301,26 +354,7 @@ ${section('Global Options', [
     option('--version, -v', 'Show version')
   ])}
 
-${section('Professional Workflow', [
-    '  1. lifeline health',
-    '  2. lifeline demo seed',
-    '  3. lifeline emergency create',
-    '  4. lifeline donors nearby --lat 19.076 --lng 72.8777 --radius 25000 --blood A+ --organ kidney',
-    '  5. lifeline match run <requestId>',
-    '  6. lifeline inventory reserve <hospitalId> --blood A+ --units 1',
-    '  7. lifeline analytics metrics'
-  ])}
-
-${section('Global Installation', [
-    '  npm install',
-    '  npm link',
-    '  lifeline help',
-    '',
-    '  Alternative without linking:',
-    '  npm run lifeline -- help'
-  ])}
-
-${style.dim('Use lifeline <command> --help for detailed command documentation.')}
+${style.dim('Use <command> --help for detailed documentation.')}
 `;
 }
 
@@ -661,11 +695,19 @@ async function nearbyParams(options) {
   };
 }
 
-async function main(argv = process.argv.slice(2), clientFactory = createClient) {
+async function main(argv = process.argv.slice(2), clientFactory = createClient, isInteractive = false) {
   const { positional, options } = parseArgs(argv);
-  const [domain, action, subject] = positional;
+  let [domain, action, subject] = positional;
   const rawJson = Boolean(options.json);
   const client = clientFactory(options.url || process.env.LIFELINE_URL || DEFAULT_GATEWAY_URL);
+
+  // If no command provided and in a TTY, start interactive shell
+  if (!domain && !isInteractive) {
+    if (process.stdin.isTTY && !options.version && !options.v && !options.help && !options.h) {
+      await interactiveShell(clientFactory);
+      return;
+    }
+  }
 
   if (options.version || options.v || domain === 'version' || domain === '--version' || domain === '-v') {
     console.log(`LifeLine CLI v${pkg.version}`);
