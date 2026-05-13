@@ -33,3 +33,8 @@ Thumbs.db
 .codex
 .github/
 .dockerignore
+TODO_LIST.md
+validate-analytics-fix.js
+tests/integration/analytics.test.js
+tests/unit/analytics.test.js
+services/web

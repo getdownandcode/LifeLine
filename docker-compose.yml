@@ -66,7 +66,7 @@ services:
       ANALYTICS_SERVICE_URL: http://analytics-service:3004
       SAGA_SERVICE_URL: http://saga-service:3005
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       matching-service:
         condition: service_started
@@ -79,6 +79,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  web:
+    build:
+      context: services/web
+      dockerfile: Dockerfile
+    container_name: lifeline-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
 
   matching-service:
     build:

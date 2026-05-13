@@ -11,10 +11,10 @@ const { notFound, errorHandler } = require('../../../shared/middleware/errorHand
 const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
 const { ok, created } = require('../../../shared/utils/response');
-const { summarizeEvents } = require('./services/metricsService');
+const { getMetricsFromDb } = require('./services/metricsService');
+const EventLog = require('./models/EventLog');
 
 const logger = createLogger('analytics-service');
-const events = [];
 
 async function start() {
   const config = validateConfig({ portEnv: 'ANALYTICS_PORT', defaultPort: 3004 });
@@ -30,12 +30,47 @@ async function start() {
   const health = createHealthHandlers({ service: 'analytics', mongodb: config.mongoUri ? mongoose.connection : undefined });
   app.get('/health', health.live);
   app.get('/ready', health.ready);
-  app.post('/events', (req, res) => {
-    const event = { ...req.body, timestamp: req.body.timestamp || new Date().toISOString() };
-    events.push(event);
-    return created(res, event);
+  app.post('/events', async (req, res) => {
+    try {
+      // Skip persistence if MongoDB not configured
+      if (!config.mongoUri) {
+        logger.warn('MongoDB not configured, skipping event persistence');
+        return created(res, { ...req.body, timestamp: req.body.timestamp || new Date().toISOString() });
+      }
+
+      const event = {
+        eventId: req.body.eventId || `${Date.now()}-${Math.random()}`,
+        event: req.body.event,
+        correlationId: req.correlationId || req.body.correlationId,
+        payload: req.body.payload,
+        timestamp: req.body.timestamp || new Date().toISOString()
+      };
+
+      // Persist to MongoDB
+      const savedEvent = await EventLog.create(event);
+      logger.info({ eventId: savedEvent._id, event: event.event, correlationId: event.correlationId }, 'event persisted');
+      
+      return created(res, savedEvent.toObject());
+    } catch (error) {
+      logger.error({ err: error, body: req.body }, 'failed to persist event');
+      return res.status(500).json({ error: 'failed to persist event', message: error.message });
+    }
   });
-  app.get('/metrics', (_req, res) => ok(res, summarizeEvents(events)));
+  app.get('/metrics', async (_req, res) => {
+    try {
+      // Query metrics from database
+      if (!config.mongoUri) {
+        logger.warn('MongoDB not configured, returning empty metrics');
+        return ok(res, { total: 0, byEvent: {} });
+      }
+
+      const metrics = await getMetricsFromDb(EventLog, { hoursBack: 24 });
+      return ok(res, metrics);
+    } catch (error) {
+      logger.error({ err: error }, 'failed to fetch metrics');
+      return res.status(500).json({ error: 'failed to fetch metrics', message: error.message });
+    }
+  });
   app.use(notFound);
   app.use(errorHandler);
 
