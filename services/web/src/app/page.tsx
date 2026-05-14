@@ -1,4 +1,8 @@
+"use client";
+
 import { Card } from "@/components/ui/core";
+import { EmergencyRequest, getLowStockAlerts, getMetrics, getRecentEmergencies } from "@/lib/api";
+import { useApi } from "@/lib/hooks/useApi";
 import { cn } from "@/lib/utils";
 import { 
   Activity, 
@@ -11,41 +15,56 @@ import {
 import Link from "next/link";
 
 export default function Dashboard() {
+  const metrics = useApi(getMetrics, [], { pollMs: 30000 });
+  const alerts = useApi(() => getLowStockAlerts(5), [], { pollMs: 30000 });
+  const recentEmergencies = useApi(() => getRecentEmergencies(5), [], { pollMs: 30000 });
+  const byEvent = metrics.data?.byEvent || {};
+  const lowStock = alerts.data || [];
+  const recentRequests = recentEmergencies.data || [];
+  const matched = byEvent["match.found"] || 0;
+  const activeEmergencies = recentRequests.filter((request) => request.status !== "fulfilled" && request.status !== "cancelled").length;
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">System Overview</h1>
-        <p className="text-zinc-500">Real-time status of LifeLine operations.</p>
+        <p className="text-zinc-500">Real-time status of LifeLine operations, refreshed every 30 seconds.</p>
       </div>
+
+      {(metrics.error || alerts.error || recentEmergencies.error) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {metrics.error || alerts.error || recentEmergencies.error}
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard 
           title="Active Emergencies" 
-          value="12" 
-          trend="+2 since last hour"
+          value={recentEmergencies.isLoading ? "..." : String(activeEmergencies)}
+          trend="Recent open requests"
           icon={Activity}
           color="text-red-600"
         />
         <StatCard 
-          title="Nearby Donors" 
-          value="154" 
-          trend="8 compatible matches"
+          title="Matched Donors" 
+          value={metrics.isLoading ? "..." : String(matched)}
+          trend="Successful match events"
           icon={Users}
           color="text-blue-600"
         />
         <StatCard 
-          title="Inventory Levels" 
-          value="82%" 
-          trend="3 low stock alerts"
+          title="Inventory Alerts" 
+          value={alerts.isLoading ? "..." : String(lowStock.length)}
+          trend="At or below low-stock threshold"
           icon={Package}
           color="text-amber-600"
         />
         <StatCard 
           title="System Health" 
-          value="Stable" 
-          trend="All services operational"
+          value={metrics.error ? "Degraded" : "Live"}
+          trend={metrics.error ? "Gateway request failed" : `${metrics.data?.total || 0} events processed`}
           icon={CheckCircle2}
-          color="text-green-600"
+          color={metrics.error ? "text-amber-600" : "text-green-600"}
         />
       </div>
 
@@ -58,18 +77,14 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between rounded-xl border border-border p-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                  <div>
-                    <p className="text-sm font-medium">Case #00{i} - Patient {['Amar', 'Priya', 'Vikram'][i-1]}</p>
-                    <p className="text-xs text-zinc-500">O+ Kidney • Critical • 12 mins ago</p>
-                  </div>
-                </div>
-                <div className="text-xs font-mono text-zinc-400">6600...e00{i}</div>
-              </div>
+            {recentRequests.slice(0, 4).map((request) => (
+              <EmergencyItem key={request._id || request.id || request.patientId} request={request} />
             ))}
+            {!recentEmergencies.isLoading && recentRequests.length === 0 && (
+              <p className="rounded-xl border border-dashed border-border p-4 text-sm text-zinc-500">
+                No emergency requests have been recorded yet.
+              </p>
+            )}
           </div>
         </Card>
 
@@ -81,26 +96,57 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-4">
-            <AlertItem 
-              type="Low Stock" 
-              item="A+ Blood Units" 
-              location="City Hospital" 
-              urgency="High" 
-            />
-            <AlertItem 
-              type="Expiring Soon" 
-              item="Heart Valve" 
-              location="Central Lab" 
-              urgency="Medium" 
-            />
-            <AlertItem 
-              type="Critical" 
-              item="O- Plasma" 
-              location="Regional Center" 
-              urgency="High" 
-            />
+            {lowStock.slice(0, 4).map((item) => (
+              <AlertItem 
+                key={`${item.hospitalId}-${item.bloodType}`}
+                type={item.unitsAvailable === 0 ? "Out of Stock" : "Low Stock"}
+                item={`${item.bloodType} Blood Units`}
+                location={item.hospitalId}
+                urgency={item.unitsAvailable === 0 ? "High" : "Medium"}
+              />
+            ))}
+            {!alerts.isLoading && lowStock.length === 0 && (
+              <p className="rounded-xl border border-dashed border-border p-4 text-sm text-zinc-500">
+                No low-stock inventory alerts right now.
+              </p>
+            )}
           </div>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+function EmergencyItem({ request }: { request: EmergencyRequest }) {
+  const id = request._id || request.id || "Pending id";
+  const isCritical = request.urgency === "critical";
+
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-border p-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className={cn(
+          "flex h-9 w-11 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+          isCritical ? "bg-red-50 text-red-600" : "bg-zinc-100 text-zinc-600"
+        )}>
+          {request.bloodType}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium">{request.patientId}</p>
+            <span className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase",
+              isCritical ? "bg-red-100 text-red-700" : "bg-zinc-100 text-zinc-600"
+            )}>
+              {request.urgency}
+            </span>
+          </div>
+          <p className="truncate text-xs text-zinc-500">{request.organRequired || "Organ"} • {request.hospitalId}</p>
+          <p className="mt-1 font-mono text-[10px] text-zinc-400">{id}</p>
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-[10px] font-medium uppercase text-zinc-400">Status</p>
+        <p className="text-xs font-semibold">{request.status || "pending"}</p>
       </div>
     </div>
   );

@@ -88,7 +88,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      GATEWAY_URL: http://api-gateway:3000
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret_at_least_32_chars}
     ports:
       - "3000:3000"
     depends_on:

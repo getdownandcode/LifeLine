@@ -46,6 +46,20 @@ function buildController({ redis, publisher }) {
     }
   }
 
+  async function recentEmergencies(req, res, next) {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 25);
+      const requests = await EmergencyRequest.find()
+        .sort({ requestedAt: -1, createdAt: -1 })
+        .limit(limit)
+        .lean();
+
+      return ok(res, requests);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async function nearbyDonors(req, res, next) {
     try {
       requireFields(req.query, ['lat', 'lng', 'radius', 'bloodType']);
@@ -135,7 +149,7 @@ function buildController({ redis, publisher }) {
     }
   }
 
-  return { createEmergency, nearbyDonors, compatibility, triggerMatch, matchStatus };
+  return { createEmergency, recentEmergencies, nearbyDonors, compatibility, triggerMatch, matchStatus };
 }
 
 module.exports = { buildController };
