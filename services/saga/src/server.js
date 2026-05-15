@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const pinoHttp = require('pino-http');
 const { validateConfig } = require('../../../shared/config/validator');
 const { createLogger } = require('../../../shared/utils/logger');
@@ -11,9 +12,9 @@ const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
 const { ok, created } = require('../../../shared/utils/response');
 const { nextSagaStep } = require('./services/sagaService');
+const SagaStep = require('./models/SagaStep');
 
 const logger = createLogger('saga-service');
-const sagas = new Map();
 
 async function start() {
   const config = validateConfig({ portEnv: 'SAGA_PORT', defaultPort: 3005 });
@@ -24,22 +25,39 @@ async function start() {
   app.use(correlationIdMiddleware());
   app.use(pinoHttp({ logger, customProps: (req) => ({ correlationId: req.correlationId }) }));
 
-  const health = createHealthHandlers({ service: 'saga' });
+  if (config.mongoUri) await mongoose.connect(config.mongoUri, { minPoolSize: 5, maxPoolSize: 20 });
+
+  const health = createHealthHandlers({
+    service: 'saga',
+    mongodb: config.mongoUri ? mongoose.connection : undefined
+  });
   app.get('/health', health.live);
   app.get('/ready', health.ready);
-  app.post('/events', (req, res) => {
+  app.post('/events', async (req, res) => {
     const step = nextSagaStep(req.body);
     const requestId = req.body.payload?.requestId || req.body.eventId;
-    const history = sagas.get(requestId) || [];
-    history.push(req.body);
-    sagas.set(requestId, history);
-    return created(res, { requestId, next: step, historyLength: history.length });
+    if (!requestId) {
+      return res.status(400).json({ error: 'requestId missing' });
+    }
+    const sequence = await SagaStep.countDocuments({ requestId });
+    await SagaStep.create({
+      requestId,
+      event: req.body.event,
+      status: 'completed',
+      payload: req.body.payload || {},
+      sequence: sequence + 1
+    });
+    return created(res, { requestId, next: step, historyLength: sequence + 1 });
   });
-  app.get('/sagas/:requestId', (req, res) => ok(res, sagas.get(req.params.requestId) || []));
+  app.get('/sagas/:requestId', async (req, res) => {
+    const steps = await SagaStep.find({ requestId: req.params.requestId }).sort({ sequence: 1 });
+    return ok(res, steps);
+  });
   app.use(notFound);
   app.use(errorHandler);
 
   const shutdown = createShutdownHandler({ logger });
+  if (config.mongoUri) shutdown.registerCleanup('mongodb', () => mongoose.disconnect());
   const server = app.listen(config.port, () => logger.info(`saga-service listening on ${config.port}`));
   shutdown.registerServer(server);
   shutdown.start();

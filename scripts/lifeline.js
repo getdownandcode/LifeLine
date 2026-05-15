@@ -11,7 +11,7 @@ const Inventory = require('../services/inventory/src/models/Inventory');
 const { normalizeUrgency } = require('../shared/utils/validators');
 const pkg = require('../package.json');
 
-const DEFAULT_GATEWAY_URL = 'http://localhost:3000';
+const DEFAULT_GATEWAY_URL = 'http://localhost:3001';
 const DEMO_HOSPITAL_ID = '660000000000000000000101';
 const DEMO_RECIPIENT = {
   patientId: 'demo-patient-001',
@@ -528,11 +528,18 @@ async function request(client, method, path, { data, params, rawJson, label } = 
 }
 
 function mongoUriFor(service) {
-  const password = process.env.MONGO_PASSWORD || 'change_me_mongo';
-  if (service === 'matching') {
-    return process.env.MATCHING_MONGODB_URI || `mongodb://admin:${password}@localhost:27017/lifeline_matching?authSource=admin`;
+  const dbName = service === 'matching' ? 'lifeline_matching' : 'lifeline_inventory';
+  const explicit = service === 'matching'
+    ? process.env.MATCHING_MONGODB_URI
+    : process.env.INVENTORY_MONGODB_URI;
+  if (explicit) return explicit;
+  if (process.env.MONGODB_URI) {
+    const url = new URL(process.env.MONGODB_URI);
+    url.pathname = '/' + dbName;
+    return url.toString();
   }
-  return process.env.INVENTORY_MONGODB_URI || `mongodb://admin:${password}@localhost:27017/lifeline_inventory?authSource=admin`;
+  const password = process.env.MONGO_PASSWORD || 'change_me_mongo';
+  return `mongodb://admin:${password}@localhost:27017/${dbName}?authSource=admin`;
 }
 
 async function seedDemoData() {
