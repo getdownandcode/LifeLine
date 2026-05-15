@@ -57,8 +57,8 @@ services:
     container_name: lifeline-gateway
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret_at_least_32_chars}
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       MATCHING_SERVICE_URL: http://matching-service:3001
       INVENTORY_SERVICE_URL: http://inventory-service:3002
@@ -88,7 +88,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      GATEWAY_URL: http://api-gateway:3000
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret_at_least_32_chars}
     ports:
       - "3000:3000"
     depends_on:
@@ -174,8 +175,11 @@ services:
     environment:
       NODE_ENV: production
       SAGA_PORT: 3005
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_saga?authSource=admin
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
     depends_on:
+      mongodb:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
 

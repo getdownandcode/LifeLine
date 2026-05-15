@@ -49,6 +49,7 @@ async function start() {
   });
   app.get('/health', health.live);
   app.get('/ready', health.ready);
+  app.get('/emergency/recent', controller.recentEmergencies);
   app.post('/emergency', controller.createEmergency);
   app.get('/donors/nearby', controller.nearbyDonors);
   app.get('/compatibility/:type', controller.compatibility);

@@ -29,8 +29,12 @@ test('CLI can generate a bearer token for gateway demo requests', () => {
   }
 });
 
-test('CLI usage mentions demo commands', () => {
-  assert.match(usage(), /demo run/);
+test('CLI usage mentions demo commands under demo help', () => {
+  assert.match(usage('demo'), /demo run/);
+  assert.match(usage('demo'), /demo seed/);
+});
+
+test('CLI usage lists compatibility in main help', () => {
   assert.match(usage(), /compatibility <bloodType>/);
 });
 

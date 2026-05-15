@@ -19,6 +19,11 @@ coverage/
 .nyc_output/
 dist/
 build/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
 
 # Runtime data
 tmp/
@@ -31,10 +36,12 @@ Thumbs.db
 .vscode/
 .idea/
 .codex
+.codex/
+.agents/
 .github/
 .dockerignore
-TODO_LIST.md
 validate-analytics-fix.js
 tests/integration/analytics.test.js
 tests/unit/analytics.test.js
-services/web
+conductor
+TODO_LIST.md
