@@ -536,6 +536,9 @@ function mongoUriFor(service) {
   if (process.env.MONGODB_URI) {
     const url = new URL(process.env.MONGODB_URI);
     url.pathname = '/' + dbName;
+    if (!url.searchParams.has('authSource') && !url.toString().includes('authSource=')) {
+      url.searchParams.set('authSource', 'admin');
+    }
     return url.toString();
   }
   const password = process.env.MONGO_PASSWORD || 'change_me_mongo';

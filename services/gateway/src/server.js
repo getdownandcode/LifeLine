@@ -32,7 +32,7 @@ function gatewayInfo() {
   };
 }
 
-function createApp() {
+function createApp(config = {}) {
   const app = express();
   app.use(helmet());
   app.use(cors());
@@ -41,7 +41,7 @@ function createApp() {
   app.use(pinoHttp({ logger, customProps: (req) => ({ correlationId: req.correlationId }) }));
 
   const health = createHealthHandlers({ service: 'gateway' });
-  app.use(limiter());
+  app.use(limiter(config));
   app.get('/', (_req, res) => res.json({ success: true, data: gatewayInfo() }));
   app.get('/health', health.live);
   app.get('/ready', health.ready);
@@ -55,7 +55,12 @@ function createApp() {
 
 async function start() {
   const config = validateConfig({ portEnv: 'GATEWAY_PORT', defaultPort: 3000, requireAuthSecrets: true });
-  const app = createApp();
+  logger.info({
+    rateLimitWindowMs: config.rateLimitWindowMs,
+    rateLimitMaxRequests: config.rateLimitMaxRequests,
+    rateLimitBypassInternalTokens: config.rateLimitBypassInternalTokens
+  }, 'Rate limiter configured');
+  const app = createApp(config);
   const shutdown = createShutdownHandler({ logger });
   const server = app.listen(config.port, () => logger.info(`api-gateway listening on ${config.port}`));
   shutdown.registerServer(server);
