@@ -45,6 +45,24 @@ function validateSecret(name, minLength, required, enforceMinLength) {
   return value;
 }
 
+function readPositiveInt(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`Config Error: ${name} must be a positive integer. Got: "${raw}"`);
+  }
+  return value;
+}
+
+function readBoolean(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  throw new Error(`Config Error: ${name} must be 'true' or 'false'. Got: "${raw}"`);
+}
+
 function validateConfig(options = {}) {
   const {
     portEnv = 'PORT',
@@ -61,8 +79,11 @@ function validateConfig(options = {}) {
     jwtSecret: requireAuthSecrets ? validateSecret('JWT_SECRET', 32, true, enforceSecretLength) : process.env.JWT_SECRET,
     internalServiceToken: requireAuthSecrets
       ? validateSecret('INTERNAL_SERVICE_TOKEN', 16, true, enforceSecretLength)
-      : process.env.INTERNAL_SERVICE_TOKEN
+      : process.env.INTERNAL_SERVICE_TOKEN,
+    rateLimitWindowMs: readPositiveInt('RATE_LIMIT_WINDOW_MS', 900000),
+    rateLimitMaxRequests: readPositiveInt('RATE_LIMIT_MAX_REQUESTS', 100),
+    rateLimitBypassInternalTokens: readBoolean('RATE_LIMIT_BYPASS_INTERNAL_TOKENS', true)
   };
 }
 
-module.exports = { validateConfig };
+module.exports = { readPositiveInt, readBoolean, validateConfig };
