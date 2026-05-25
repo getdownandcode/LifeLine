@@ -10,7 +10,7 @@ const { correlationIdMiddleware } = require('../../../shared/middleware/correlat
 const { notFound, errorHandler } = require('../../../shared/middleware/errorHandler');
 const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
-const { requireFields } = require('../../../shared/utils/validators');
+const { requireFields, assertE164Phone, assertEmail } = require('../../../shared/utils/validators');
 const { ok, created } = require('../../../shared/utils/response');
 const { sendNotification } = require('./services/notificationService');
 
@@ -19,6 +19,12 @@ const logs = [];
 
 function requiredNotificationFields(channel) {
   return channel === 'broadcast' ? ['message'] : ['to', 'message'];
+}
+
+function validateNotificationRequest(channel, body) {
+  requireFields(body, requiredNotificationFields(channel));
+  if (channel === 'sms') assertE164Phone(body.to);
+  if (channel === 'email') assertEmail(body.to);
 }
 
 async function start() {
@@ -34,7 +40,7 @@ async function start() {
 
   async function send(channel, req, res, next) {
     try {
-      requireFields(req.body, requiredNotificationFields(channel));
+      validateNotificationRequest(channel, req.body);
       const result = await sendNotification({ channel, ...req.body });
       logs.push({ recipientId: req.body.recipientId, ...result });
       return created(res, result);
@@ -69,4 +75,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { requiredNotificationFields, start };
+module.exports = { requiredNotificationFields, validateNotificationRequest, start };
