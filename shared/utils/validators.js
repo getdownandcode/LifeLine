@@ -44,6 +44,23 @@ function assertObjectId(value, name = 'ObjectId') {
   }
 }
 
+function assertE164Phone(value, name = 'to') {
+  if (typeof value !== 'string' || value.length > 16 || !/^\+[1-9]\d{1,14}$/.test(value)) {
+    const error = new Error(`Invalid ${name}: expected E.164 phone number`);
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+function assertEmail(value, name = 'to') {
+  const emailPattern = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (typeof value !== 'string' || value.length > 254 || !emailPattern.test(value)) {
+    const error = new Error(`Invalid ${name}: expected email address`);
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
 function normalizeUrgency(value = 'standard') {
   const normalized = URGENCY_ALIASES[String(value).trim().toLowerCase()];
   if (!normalized) {
@@ -64,4 +81,13 @@ function parseCoordinate(value, name) {
   return number;
 }
 
-module.exports = { requireFields, assertBloodType, assertOrganType, assertObjectId, normalizeUrgency, parseCoordinate };
+module.exports = {
+  requireFields,
+  assertBloodType,
+  assertOrganType,
+  assertObjectId,
+  assertE164Phone,
+  assertEmail,
+  normalizeUrgency,
+  parseCoordinate
+};
