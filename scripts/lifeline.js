@@ -347,6 +347,11 @@ ${section('Communication And Observability', [
     command('saga event', 'Record a workflow event')
   ])}
 
+${section('Demo', [
+    command('demo seed', 'Seed demo donors and inventory'),
+    command('demo run', 'Run the complete end-to-end demo flow')
+  ])}
+
 ${section('Global Options', [
     option('--url <gateway>', `Gateway URL. Default: ${DEFAULT_GATEWAY_URL}`),
     option('--json', 'Print raw JSON and suppress decorative output'),

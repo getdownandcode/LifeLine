@@ -34,6 +34,11 @@ test('CLI usage mentions demo commands under demo help', () => {
   assert.match(usage('demo'), /demo seed/);
 });
 
+test('CLI usage mentions demo commands in main help', () => {
+  assert.match(usage(), /demo run/);
+  assert.match(usage(), /demo seed/);
+});
+
 test('CLI usage lists compatibility in main help', () => {
   assert.match(usage(), /compatibility <bloodType>/);
 });
