@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { validateConfig } = require('../../shared/config/validator');
 const { correlationIdMiddleware } = require('../../shared/middleware/correlationId');
+const { createCircuitBreaker } = require('../../shared/middleware/circuitBreaker');
 const { createHealthHandlers } = require('../../shared/middleware/health');
 
 function withEnv(values, run) {
@@ -106,4 +107,88 @@ test('ready health reports configured RabbitMQ failure', () => {
   assert.equal(res.statusCode, 503);
   assert.equal(res.body.ready, false);
   assert.equal(res.body.dependencies.rabbitmq, 'disconnected');
+});
+
+test('circuit breaker opens after threshold failures and rejects while open', async () => {
+  const breaker = createCircuitBreaker({ name: 'inventory', failureThreshold: 2, resetAfterMs: 1000 });
+
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('down');
+  }), /down/);
+  assert.equal(breaker.getState(), 'closed');
+
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('still down');
+  }), /still down/);
+  assert.equal(breaker.getState(), 'open');
+
+  await assert.rejects(
+    () => breaker.execute(async () => 'ok'),
+    (error) => error.statusCode === 503 && error.code === 'SERVICE_UNAVAILABLE'
+  );
+  assert.equal(breaker.getMetrics().rejected, 1);
+});
+
+test('circuit breaker closes after successful half-open probe', async () => {
+  const breaker = createCircuitBreaker({ name: 'matching', failureThreshold: 1, resetAfterMs: 1 });
+
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('down');
+  }));
+  await new Promise((resolve) => setTimeout(resolve, 2));
+
+  const result = await breaker.execute(async () => 'recovered');
+
+  assert.equal(result, 'recovered');
+  assert.equal(breaker.getState(), 'closed');
+  assert.equal(breaker.getMetrics().failures, 0);
+});
+
+test('circuit breaker allows only one half-open probe and reopens on probe failure', async () => {
+  const breaker = createCircuitBreaker({ name: 'analytics', failureThreshold: 1, resetAfterMs: 1 });
+  let releaseProbe;
+  const probe = new Promise((resolve) => {
+    releaseProbe = resolve;
+  });
+
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('down');
+  }));
+  await new Promise((resolve) => setTimeout(resolve, 2));
+
+  const firstProbe = breaker.execute(async () => probe);
+  await assert.rejects(
+    () => breaker.execute(async () => 'second probe'),
+    (error) => error.statusCode === 503 && error.code === 'SERVICE_UNAVAILABLE'
+  );
+  releaseProbe('ok');
+  await firstProbe;
+
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('down again');
+  }));
+  await new Promise((resolve) => setTimeout(resolve, 2));
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('probe failed');
+  }), /probe failed/);
+
+  assert.equal(breaker.getState(), 'open');
+});
+
+test('circuit breaker metrics reflect current state and counters', async () => {
+  const breaker = createCircuitBreaker({ name: 'saga', failureThreshold: 1, resetAfterMs: 1000 });
+
+  await breaker.execute(async () => 'ok');
+  await assert.rejects(() => breaker.execute(async () => {
+    throw new Error('down');
+  }));
+
+  const metrics = breaker.getMetrics();
+  assert.equal(metrics.name, 'saga');
+  assert.equal(metrics.state, 'open');
+  assert.equal(metrics.successes, 1);
+  assert.equal(metrics.failures, 1);
+  assert.equal(metrics.openedCount, 1);
+  assert.ok(metrics.lastFailureAt);
+  assert.ok(metrics.lastOpenedAt);
 });

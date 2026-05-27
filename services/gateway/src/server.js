@@ -11,7 +11,8 @@ const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
 const { auth } = require('./middleware/auth');
 const { limiter } = require('./middleware/rateLimiter');
-const { createProxyRouter } = require('./routes/proxy');
+const { createProxyRouter, createServiceBreakers } = require('./routes/proxy');
+const { createMonitoringRouter } = require('./routes/monitoring');
 
 const logger = createLogger('api-gateway');
 
@@ -46,7 +47,9 @@ function createApp(config = {}) {
   app.get('/health', health.live);
   app.get('/ready', health.ready);
   app.use(auth);
-  app.use(createProxyRouter());
+  const breakers = createServiceBreakers({ ...config, logger });
+  app.use(createMonitoringRouter(breakers));
+  app.use(createProxyRouter(config, breakers));
   app.use(notFound);
   app.use(errorHandler);
 
@@ -58,8 +61,11 @@ async function start() {
   logger.info({
     rateLimitWindowMs: config.rateLimitWindowMs,
     rateLimitMaxRequests: config.rateLimitMaxRequests,
-    rateLimitBypassInternalTokens: config.rateLimitBypassInternalTokens
-  }, 'Rate limiter configured');
+    rateLimitBypassInternalTokens: config.rateLimitBypassInternalTokens,
+    circuitBreakerFailureThreshold: config.circuitBreakerFailureThreshold,
+    circuitBreakerResetAfterMs: config.circuitBreakerResetAfterMs,
+    serviceTimeoutMs: config.serviceTimeoutMs
+  }, 'Gateway resilience configured');
   const app = createApp(config);
   const shutdown = createShutdownHandler({ logger });
   const server = app.listen(config.port, () => logger.info(`api-gateway listening on ${config.port}`));

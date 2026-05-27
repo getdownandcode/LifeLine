@@ -82,7 +82,10 @@ function validateConfig(options = {}) {
       : process.env.INTERNAL_SERVICE_TOKEN,
     rateLimitWindowMs: readPositiveInt('RATE_LIMIT_WINDOW_MS', 900000),
     rateLimitMaxRequests: readPositiveInt('RATE_LIMIT_MAX_REQUESTS', 100),
-    rateLimitBypassInternalTokens: readBoolean('RATE_LIMIT_BYPASS_INTERNAL_TOKENS', true)
+    rateLimitBypassInternalTokens: readBoolean('RATE_LIMIT_BYPASS_INTERNAL_TOKENS', true),
+    circuitBreakerFailureThreshold: readPositiveInt('CIRCUIT_BREAKER_FAILURE_THRESHOLD', 5),
+    circuitBreakerResetAfterMs: readPositiveInt('CIRCUIT_BREAKER_RESET_AFTER_MS', 30000),
+    serviceTimeoutMs: readPositiveInt('SERVICE_TIMEOUT_MS', 5000)
   };
 }
 
