@@ -29,7 +29,10 @@ async function start() {
   let publisher;
 
   if (config.mongoUri) {
-    await mongoose.connect(config.mongoUri, { minPoolSize: 5, maxPoolSize: 20 });
+    await mongoose.connect(config.mongoUri, {
+      minPoolSize: config.mongoMinPoolSize,
+      maxPoolSize: config.mongoMaxPoolSize
+    });
   }
   if (config.redisUrl) redis = new Redis(config.redisUrl);
   if (config.rabbitmqUrl) {

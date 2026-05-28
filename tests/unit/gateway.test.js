@@ -171,13 +171,26 @@ test('readBoolean rejects malformed boolean values', () => {
 });
 
 test('validateConfig returns rate limit defaults when envs are unset', () => {
-  const config = validateConfig();
-  assert.equal(config.rateLimitWindowMs, 900000);
-  assert.equal(config.rateLimitMaxRequests, 100);
-  assert.equal(config.rateLimitBypassInternalTokens, true);
-  assert.equal(config.circuitBreakerFailureThreshold, 5);
-  assert.equal(config.circuitBreakerResetAfterMs, 30000);
-  assert.equal(config.serviceTimeoutMs, 5000);
+  const previousMinPoolSize = process.env.MONGO_MIN_POOL_SIZE;
+  const previousMaxPoolSize = process.env.MONGO_MAX_POOL_SIZE;
+  delete process.env.MONGO_MIN_POOL_SIZE;
+  delete process.env.MONGO_MAX_POOL_SIZE;
+  try {
+    const config = validateConfig();
+    assert.equal(config.mongoMinPoolSize, 5);
+    assert.equal(config.mongoMaxPoolSize, 20);
+    assert.equal(config.rateLimitWindowMs, 900000);
+    assert.equal(config.rateLimitMaxRequests, 100);
+    assert.equal(config.rateLimitBypassInternalTokens, true);
+    assert.equal(config.circuitBreakerFailureThreshold, 5);
+    assert.equal(config.circuitBreakerResetAfterMs, 30000);
+    assert.equal(config.serviceTimeoutMs, 5000);
+  } finally {
+    if (previousMinPoolSize === undefined) delete process.env.MONGO_MIN_POOL_SIZE;
+    else process.env.MONGO_MIN_POOL_SIZE = previousMinPoolSize;
+    if (previousMaxPoolSize === undefined) delete process.env.MONGO_MAX_POOL_SIZE;
+    else process.env.MONGO_MAX_POOL_SIZE = previousMaxPoolSize;
+  }
 });
 
 test('validateConfig reads rate limit env vars', () => {
@@ -202,6 +215,46 @@ test('validateConfig reads rate limit env vars', () => {
     delete process.env.CIRCUIT_BREAKER_FAILURE_THRESHOLD;
     delete process.env.CIRCUIT_BREAKER_RESET_AFTER_MS;
     delete process.env.SERVICE_TIMEOUT_MS;
+  }
+});
+
+test('validateConfig reads mongo pool env vars', () => {
+  process.env.MONGO_MIN_POOL_SIZE = '2';
+  process.env.MONGO_MAX_POOL_SIZE = '12';
+  try {
+    const config = validateConfig();
+    assert.equal(config.mongoMinPoolSize, 2);
+    assert.equal(config.mongoMaxPoolSize, 12);
+  } finally {
+    delete process.env.MONGO_MIN_POOL_SIZE;
+    delete process.env.MONGO_MAX_POOL_SIZE;
+  }
+});
+
+test('validateConfig rejects invalid mongo pool env vars', () => {
+  for (const [name, value] of [
+    ['MONGO_MIN_POOL_SIZE', '0'],
+    ['MONGO_MAX_POOL_SIZE', '-1'],
+    ['MONGO_MIN_POOL_SIZE', 'abc'],
+    ['MONGO_MAX_POOL_SIZE', '2.5']
+  ]) {
+    process.env[name] = value;
+    try {
+      assert.throws(() => validateConfig(), /must be a positive integer/);
+    } finally {
+      delete process.env[name];
+    }
+  }
+});
+
+test('validateConfig rejects mongo min pool greater than max pool', () => {
+  process.env.MONGO_MIN_POOL_SIZE = '30';
+  process.env.MONGO_MAX_POOL_SIZE = '20';
+  try {
+    assert.throws(() => validateConfig(), /MONGO_MIN_POOL_SIZE must be less than or equal to MONGO_MAX_POOL_SIZE/);
+  } finally {
+    delete process.env.MONGO_MIN_POOL_SIZE;
+    delete process.env.MONGO_MAX_POOL_SIZE;
   }
 });
 
