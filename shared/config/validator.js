@@ -71,9 +71,18 @@ function validateConfig(options = {}) {
     enforceSecretLength = process.env.STRICT_SECRET_VALIDATION === 'true'
   } = options;
 
+  const mongoMinPoolSize = readPositiveInt('MONGO_MIN_POOL_SIZE', 5);
+  const mongoMaxPoolSize = readPositiveInt('MONGO_MAX_POOL_SIZE', 20);
+
+  if (mongoMinPoolSize > mongoMaxPoolSize) {
+    throw new Error('Config Error: MONGO_MIN_POOL_SIZE must be less than or equal to MONGO_MAX_POOL_SIZE.');
+  }
+
   return {
     port: readPort(portEnv, defaultPort),
     mongoUri: validateUrl('MONGODB_URI', process.env.MONGODB_URI, ['mongodb:', 'mongodb+srv:']),
+    mongoMinPoolSize,
+    mongoMaxPoolSize,
     redisUrl: validateUrl('REDIS_URL', process.env.REDIS_URL, ['redis:', 'rediss:']),
     rabbitmqUrl: validateUrl('RABBITMQ_URL', process.env.RABBITMQ_URL, ['amqp:', 'amqps:']),
     jwtSecret: requireAuthSecrets ? validateSecret('JWT_SECRET', 32, true, enforceSecretLength) : process.env.JWT_SECRET,

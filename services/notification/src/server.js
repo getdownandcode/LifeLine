@@ -36,7 +36,12 @@ async function start() {
   app.use(correlationIdMiddleware());
   app.use(pinoHttp({ logger, customProps: (req) => ({ correlationId: req.correlationId }) }));
 
-  if (config.mongoUri) await mongoose.connect(config.mongoUri, { minPoolSize: 5, maxPoolSize: 20 });
+  if (config.mongoUri) {
+    await mongoose.connect(config.mongoUri, {
+      minPoolSize: config.mongoMinPoolSize,
+      maxPoolSize: config.mongoMaxPoolSize
+    });
+  }
 
   async function send(channel, req, res, next) {
     try {

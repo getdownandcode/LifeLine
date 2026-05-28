@@ -198,12 +198,15 @@ JWT_SECRET=change_me_dev_secret_at_least_32_chars
 MONGO_PASSWORD=change_me_mongo
 INTERNAL_SERVICE_TOKEN=change_me_internal_token_16_chars
 MONGODB_URI=mongodb://admin:change_me_mongo@localhost:27017/lifeline?authSource=admin
+MONGO_MIN_POOL_SIZE=5
+MONGO_MAX_POOL_SIZE=20
 REDIS_URL=redis://localhost:6379
 RABBITMQ_URL=amqp://admin:change_me_rabbit@localhost:5672
 STRICT_SECRET_VALIDATION=false
 ```
 
 Production startup validates service ports, dependency URLs, and required gateway secrets before a service listens. Set `STRICT_SECRET_VALIDATION=true` to enforce `JWT_SECRET` length of at least 32 characters and `INTERNAL_SERVICE_TOKEN` length of at least 16 characters.
+Mongo-backed services use `MONGO_MIN_POOL_SIZE` and `MONGO_MAX_POOL_SIZE` for Mongoose connection pools. They default to `5` and `20`, and each service can override them through its own environment.
 
 ## Operations
 
