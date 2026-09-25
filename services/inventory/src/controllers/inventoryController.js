@@ -1,5 +1,5 @@
 const { ok, created } = require('../../../../shared/utils/response');
-const { requireFields, assertBloodType, assertObjectId, assertPositiveUnits, assertNonZeroNumber, parseCoordinate } = require('../../../../shared/utils/validators');
+const { requireFields, assertBloodType, assertObjectId, assertPositiveUnits, assertNonZeroUnits, parseCoordinate } = require('../../../../shared/utils/validators');
 const { EVENTS, EXCHANGES } = require('../../../../shared/constants/eventTypes');
 const { toPoint } = require('../../../matching/src/utils/geo');
 const stockService = require('../services/stockService');
@@ -38,7 +38,7 @@ function buildController({ publisher }) {
       requireFields(req.body, ['bloodType', 'unitsChange', 'lat', 'lng']);
       assertBloodType(req.body.bloodType);
       assertObjectId(req.params.id, 'hospitalId');
-      const unitsChange = assertNonZeroNumber(req.body.unitsChange);
+      const unitsChange = assertNonZeroUnits(req.body.unitsChange);
       const item = await stockService.updateStock({
         hospitalId: req.params.id,
         bloodType: req.body.bloodType,
@@ -66,6 +66,7 @@ function buildController({ publisher }) {
       assertBloodType(req.body.bloodType);
       assertObjectId(req.body.fromHospitalId, 'fromHospitalId');
       assertObjectId(req.body.toHospitalId, 'toHospitalId');
+      assertPositiveUnits(req.body.units);
       return created(res, { status: 'requested', ...req.body });
     } catch (error) {
       return next(error);

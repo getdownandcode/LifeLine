@@ -5,8 +5,9 @@ const {
   assertE164Phone,
   assertEmail,
   normalizeUrgency,
+  parseCoordinate,
   assertPositiveUnits,
-  assertNonZeroNumber
+  assertNonZeroUnits
 } = require('../../shared/utils/validators');
 
 test('ObjectId validation returns a client error before Mongoose casts', () => {
@@ -65,7 +66,7 @@ test('units validation accepts positive integers and coerces numeric strings', (
 });
 
 test('units validation rejects zero, negative, fractional, and malformed values', () => {
-  for (const bad of [0, -100, 2.5, 'abc', '', null, undefined]) {
+  for (const bad of [0, -100, 2.5, 'abc', '', null, undefined, true, false, [5], { units: 5 }]) {
     assert.throws(
       () => assertPositiveUnits(bad),
       (error) => error.statusCode === 400 && error.message === 'Invalid units: expected a positive integer'
@@ -73,17 +74,31 @@ test('units validation rejects zero, negative, fractional, and malformed values'
   }
 });
 
-test('unitsChange validation accepts non-zero numbers and coerces numeric strings', () => {
-  assert.equal(assertNonZeroNumber(5), 5);
-  assert.equal(assertNonZeroNumber(-3), -3);
-  assert.equal(assertNonZeroNumber('2.5'), 2.5);
+test('unitsChange validation accepts non-zero integers and coerces numeric strings', () => {
+  assert.equal(assertNonZeroUnits(5), 5);
+  assert.equal(assertNonZeroUnits(-3), -3);
+  assert.equal(assertNonZeroUnits('4'), 4);
 });
 
-test('unitsChange validation rejects zero and non-finite values', () => {
-  for (const bad of [0, '0', 'abc', '', null, undefined, NaN, Infinity]) {
+test('unitsChange validation rejects zero, fractional, and non-numeric values', () => {
+  for (const bad of [0, '0', 2.5, '2.5', 'abc', '', null, undefined, NaN, Infinity, true, false, [5], {}]) {
     assert.throws(
-      () => assertNonZeroNumber(bad),
-      (error) => error.statusCode === 400 && error.message === 'Invalid unitsChange: expected a non-zero number'
+      () => assertNonZeroUnits(bad),
+      (error) => error.statusCode === 400 && error.message === 'Invalid unitsChange: expected a non-zero integer'
+    );
+  }
+});
+
+test('coordinate validation accepts numbers and numeric strings', () => {
+  assert.equal(parseCoordinate(19.076, 'lat'), 19.076);
+  assert.equal(parseCoordinate('72.8777', 'lng'), 72.8777);
+});
+
+test('coordinate validation rejects booleans, arrays, and objects', () => {
+  for (const bad of [true, false, [19], {}, () => 19]) {
+    assert.throws(
+      () => parseCoordinate(bad, 'lat'),
+      (error) => error.statusCode === 400 && error.message === 'Invalid lat'
     );
   }
 });

@@ -72,7 +72,7 @@ function normalizeUrgency(value = 'standard') {
 }
 
 function parseCoordinate(value, name) {
-  const number = Number(value);
+  const number = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
   if (!Number.isFinite(number)) {
     const error = new Error(`Invalid ${name}`);
     error.statusCode = 400;
@@ -81,8 +81,12 @@ function parseCoordinate(value, name) {
   return number;
 }
 
+function parseNumericInput(value) {
+  return typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+}
+
 function assertPositiveUnits(value, name = 'units') {
-  const number = Number(value);
+  const number = parseNumericInput(value);
   if (!Number.isInteger(number) || number <= 0) {
     const error = new Error(`Invalid ${name}: expected a positive integer`);
     error.statusCode = 400;
@@ -91,10 +95,10 @@ function assertPositiveUnits(value, name = 'units') {
   return number;
 }
 
-function assertNonZeroNumber(value, name = 'unitsChange') {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number === 0) {
-    const error = new Error(`Invalid ${name}: expected a non-zero number`);
+function assertNonZeroUnits(value, name = 'unitsChange') {
+  const number = parseNumericInput(value);
+  if (!Number.isInteger(number) || number === 0) {
+    const error = new Error(`Invalid ${name}: expected a non-zero integer`);
     error.statusCode = 400;
     throw error;
   }
@@ -111,5 +115,5 @@ module.exports = {
   normalizeUrgency,
   parseCoordinate,
   assertPositiveUnits,
-  assertNonZeroNumber
+  assertNonZeroUnits
 };
