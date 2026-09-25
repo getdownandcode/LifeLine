@@ -11,6 +11,7 @@ const { correlationIdMiddleware } = require('../../../shared/middleware/correlat
 const { notFound, errorHandler } = require('../../../shared/middleware/errorHandler');
 const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
+const { internalAuth } = require('../../../shared/middleware/internalAuth');
 const { buildController } = require('./controllers/matchingController');
 const { EventPublisher } = require('./events/publisher');
 
@@ -37,7 +38,7 @@ async function start() {
   if (config.redisUrl) redis = new Redis(config.redisUrl);
   if (config.rabbitmqUrl) {
     try {
-      publisher = await EventPublisher.create(config.rabbitmqUrl);
+      publisher = await EventPublisher.create(config.rabbitmqUrl, logger);
     } catch (error) {
       logger.warn({ err: error }, 'RabbitMQ unavailable; continuing without publishing');
     }
@@ -52,6 +53,7 @@ async function start() {
   });
   app.get('/health', health.live);
   app.get('/ready', health.ready);
+  app.use(internalAuth);
   app.get('/emergency/recent', controller.recentEmergencies);
   app.post('/emergency', controller.createEmergency);
   app.get('/donors/nearby', controller.nearbyDonors);

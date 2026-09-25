@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 function auth(req, res, next) {
   if (req.path === '/health' || req.path === '/ready') return next();
-  if (process.env.NODE_ENV === 'development' && !process.env.REQUIRE_AUTH) return next();
+  if (process.env.REQUIRE_AUTH === '0') return next();
 
   const header = req.header('authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;

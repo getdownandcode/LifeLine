@@ -47,9 +47,9 @@ test('gateway root info describes available public and API routes', () => {
   assert.match(info.auth, /Authorization: Bearer <jwt>/);
 });
 
-test('gateway API routes require bearer auth in production', () => {
-  const previousNodeEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = 'production';
+test('gateway API routes require bearer auth by default', () => {
+  const previousRequireAuth = process.env.REQUIRE_AUTH;
+  delete process.env.REQUIRE_AUTH;
 
   const req = {
     path: '/api/matching',
@@ -75,7 +75,94 @@ test('gateway API routes require bearer auth in production', () => {
     assert.equal(res.body.success, false);
     assert.equal(res.body.error.message, 'Missing bearer token');
   } finally {
-    process.env.NODE_ENV = previousNodeEnv;
+    if (previousRequireAuth !== undefined) process.env.REQUIRE_AUTH = previousRequireAuth;
+  }
+});
+
+test('gateway auth only bypasses when explicitly disabled via REQUIRE_AUTH=0', () => {
+  const previousRequireAuth = process.env.REQUIRE_AUTH;
+  process.env.REQUIRE_AUTH = '0';
+
+  try {
+    let called = false;
+    auth({ path: '/api/matching', header: () => '' }, {}, () => {
+      called = true;
+    });
+    assert.equal(called, true);
+  } finally {
+    if (previousRequireAuth === undefined) delete process.env.REQUIRE_AUTH;
+    else process.env.REQUIRE_AUTH = previousRequireAuth;
+  }
+});
+
+test('gateway auth keeps health and readiness endpoints public', () => {
+  for (const path of ['/health', '/ready']) {
+    let called = false;
+    auth({ path, header: () => '' }, {}, () => {
+      called = true;
+    });
+    assert.equal(called, true);
+  }
+});
+
+test('gateway auth accepts a valid bearer token and attaches the payload', () => {
+  const jwt = require('jsonwebtoken');
+  const previousSecret = process.env.JWT_SECRET;
+  const previousRequireAuth = process.env.REQUIRE_AUTH;
+  process.env.JWT_SECRET = 'test_secret_that_is_at_least_32_chars';
+  delete process.env.REQUIRE_AUTH;
+
+  try {
+    const token = jwt.sign({ sub: 'cli', role: 'admin' }, process.env.JWT_SECRET);
+    const req = {
+      path: '/api/matching',
+      header: (name) => (name === 'authorization' ? `Bearer ${token}` : undefined)
+    };
+
+    let called = false;
+    auth(req, {}, () => {
+      called = true;
+    });
+
+    assert.equal(called, true);
+    assert.equal(req.user.sub, 'cli');
+    assert.equal(req.user.role, 'admin');
+  } finally {
+    if (previousSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousSecret;
+    if (previousRequireAuth === undefined) delete process.env.REQUIRE_AUTH;
+    else process.env.REQUIRE_AUTH = previousRequireAuth;
+  }
+});
+
+test('gateway auth rejects tampered bearer tokens', () => {
+  const previousRequireAuth = process.env.REQUIRE_AUTH;
+  delete process.env.REQUIRE_AUTH;
+
+  const res = {
+    statusCode: 200,
+    body: undefined,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    }
+  };
+
+  try {
+    auth(
+      { path: '/api/matching', header: (name) => (name === 'authorization' ? 'Bearer not-a-jwt' : undefined) },
+      res,
+      () => assert.fail('auth should reject invalid bearer tokens')
+    );
+
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.body.error.message, 'Invalid bearer token');
+  } finally {
+    if (previousRequireAuth !== undefined) process.env.REQUIRE_AUTH = previousRequireAuth;
   }
 });
 

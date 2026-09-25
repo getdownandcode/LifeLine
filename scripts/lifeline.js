@@ -422,7 +422,7 @@ async function optionValue(options, name, question, { required = true, defaultVa
 }
 
 function bearerToken() {
-  const secret = process.env.JWT_SECRET || 'change_me_dev_secret';
+  const secret = process.env.JWT_SECRET || 'change_me_dev_secret_at_least_32_chars';
   return jwt.sign(
     { sub: 'lifeline-cli', role: 'admin', scope: ['demo', 'gateway'] },
     secret,

@@ -10,6 +10,7 @@ const { correlationIdMiddleware } = require('../../../shared/middleware/correlat
 const { notFound, errorHandler } = require('../../../shared/middleware/errorHandler');
 const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
+const { internalAuth } = require('../../../shared/middleware/internalAuth');
 const { requireFields, assertE164Phone, assertEmail } = require('../../../shared/utils/validators');
 const { ok, created } = require('../../../shared/utils/response');
 const { sendNotification } = require('./services/notificationService');
@@ -57,6 +58,7 @@ async function start() {
   const health = createHealthHandlers({ service: 'notification', mongodb: config.mongoUri ? mongoose.connection : undefined });
   app.get('/health', health.live);
   app.get('/ready', health.ready);
+  app.use(internalAuth);
   app.post('/sms', (req, res, next) => send('sms', req, res, next));
   app.post('/email', (req, res, next) => send('email', req, res, next));
   app.post('/push', (req, res, next) => send('push', req, res, next));

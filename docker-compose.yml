@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret}
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_secret_at_least_32_chars}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       MATCHING_SERVICE_URL: http://matching-service:3001
       INVENTORY_SERVICE_URL: http://inventory-service:3002
@@ -109,6 +109,7 @@ services:
       MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_matching?authSource=admin
       MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
       MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-20}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
     depends_on:
@@ -131,6 +132,7 @@ services:
       MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_inventory?authSource=admin
       MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
       MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-20}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
     depends_on:
       mongodb:
@@ -150,6 +152,7 @@ services:
       MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_notifications?authSource=admin
       MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
       MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-20}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
     depends_on:
       mongodb:
@@ -169,6 +172,7 @@ services:
       MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_analytics?authSource=admin
       MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
       MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-20}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
     depends_on:
       mongodb:
@@ -186,6 +190,7 @@ services:
       MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-change_me_mongo}@mongodb:27017/lifeline_saga?authSource=admin
       MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
       MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-20}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change_me_internal_token_16_chars}
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-change_me_rabbit}@rabbitmq:5672
     depends_on:
       mongodb:
