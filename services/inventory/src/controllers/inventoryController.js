@@ -1,5 +1,5 @@
 const { ok, created } = require('../../../../shared/utils/response');
-const { requireFields, assertBloodType, assertObjectId, parseCoordinate } = require('../../../../shared/utils/validators');
+const { requireFields, assertBloodType, assertObjectId, assertPositiveUnits, assertNonZeroNumber, parseCoordinate } = require('../../../../shared/utils/validators');
 const { EVENTS, EXCHANGES } = require('../../../../shared/constants/eventTypes');
 const { toPoint } = require('../../../matching/src/utils/geo');
 const stockService = require('../services/stockService');
@@ -19,12 +19,13 @@ function buildController({ publisher }) {
       requireFields(req.body, ['bloodType', 'units']);
       assertBloodType(req.body.bloodType);
       assertObjectId(req.params.id, 'hospitalId');
+      const units = assertPositiveUnits(req.body.units);
       const item = await stockService.reserveUnits({
         hospitalId: req.params.id,
         bloodType: req.body.bloodType,
-        units: Number(req.body.units)
+        units
       });
-      publisher?.publish(EXCHANGES.DIRECT, EVENTS.INVENTORY_RESERVED, { hospitalId: req.params.id, bloodType: item.bloodType, units: req.body.units });
+      publisher?.publish(EXCHANGES.DIRECT, EVENTS.INVENTORY_RESERVED, { hospitalId: req.params.id, bloodType: item.bloodType, units });
       return ok(res, item);
     } catch (error) {
       publisher?.publish(EXCHANGES.DIRECT, EVENTS.INVENTORY_FAILED, { hospitalId: req.params.id, reason: error.message });
@@ -37,13 +38,14 @@ function buildController({ publisher }) {
       requireFields(req.body, ['bloodType', 'unitsChange', 'lat', 'lng']);
       assertBloodType(req.body.bloodType);
       assertObjectId(req.params.id, 'hospitalId');
+      const unitsChange = assertNonZeroNumber(req.body.unitsChange);
       const item = await stockService.updateStock({
         hospitalId: req.params.id,
         bloodType: req.body.bloodType,
-        unitsChange: Number(req.body.unitsChange),
+        unitsChange,
         location: toPoint(parseCoordinate(req.body.lng, 'lng'), parseCoordinate(req.body.lat, 'lat'))
       });
-      publisher?.publish(EXCHANGES.FANOUT, EVENTS.INVENTORY_UPDATED, { hospitalId: req.params.id, bloodType: item.bloodType, unitsChange: req.body.unitsChange, newTotal: item.unitsAvailable });
+      publisher?.publish(EXCHANGES.FANOUT, EVENTS.INVENTORY_UPDATED, { hospitalId: req.params.id, bloodType: item.bloodType, unitsChange, newTotal: item.unitsAvailable });
       return created(res, item);
     } catch (error) {
       return next(error);

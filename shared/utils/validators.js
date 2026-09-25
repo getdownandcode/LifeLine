@@ -81,6 +81,26 @@ function parseCoordinate(value, name) {
   return number;
 }
 
+function assertPositiveUnits(value, name = 'units') {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) {
+    const error = new Error(`Invalid ${name}: expected a positive integer`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return number;
+}
+
+function assertNonZeroNumber(value, name = 'unitsChange') {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number === 0) {
+    const error = new Error(`Invalid ${name}: expected a non-zero number`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return number;
+}
+
 module.exports = {
   requireFields,
   assertBloodType,
@@ -89,5 +109,7 @@ module.exports = {
   assertE164Phone,
   assertEmail,
   normalizeUrgency,
-  parseCoordinate
+  parseCoordinate,
+  assertPositiveUnits,
+  assertNonZeroNumber
 };

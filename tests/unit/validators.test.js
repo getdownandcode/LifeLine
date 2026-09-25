@@ -1,6 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { assertObjectId, assertE164Phone, assertEmail, normalizeUrgency } = require('../../shared/utils/validators');
+const {
+  assertObjectId,
+  assertE164Phone,
+  assertEmail,
+  normalizeUrgency,
+  assertPositiveUnits,
+  assertNonZeroNumber
+} = require('../../shared/utils/validators');
 
 test('ObjectId validation returns a client error before Mongoose casts', () => {
   assert.doesNotThrow(() => assertObjectId('660000000000000000000101', 'hospitalId'));
@@ -48,6 +55,35 @@ test('email validation rejects malformed notification targets', () => {
     assert.throws(
       () => assertEmail(email),
       (error) => error.statusCode === 400 && error.message === 'Invalid to: expected email address'
+    );
+  }
+});
+
+test('units validation accepts positive integers and coerces numeric strings', () => {
+  assert.equal(assertPositiveUnits(3), 3);
+  assert.equal(assertPositiveUnits('4'), 4);
+});
+
+test('units validation rejects zero, negative, fractional, and malformed values', () => {
+  for (const bad of [0, -100, 2.5, 'abc', '', null, undefined]) {
+    assert.throws(
+      () => assertPositiveUnits(bad),
+      (error) => error.statusCode === 400 && error.message === 'Invalid units: expected a positive integer'
+    );
+  }
+});
+
+test('unitsChange validation accepts non-zero numbers and coerces numeric strings', () => {
+  assert.equal(assertNonZeroNumber(5), 5);
+  assert.equal(assertNonZeroNumber(-3), -3);
+  assert.equal(assertNonZeroNumber('2.5'), 2.5);
+});
+
+test('unitsChange validation rejects zero and non-finite values', () => {
+  for (const bad of [0, '0', 'abc', '', null, undefined, NaN, Infinity]) {
+    assert.throws(
+      () => assertNonZeroNumber(bad),
+      (error) => error.statusCode === 400 && error.message === 'Invalid unitsChange: expected a non-zero number'
     );
   }
 });
