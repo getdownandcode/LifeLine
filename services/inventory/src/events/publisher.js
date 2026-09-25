@@ -22,7 +22,7 @@ async function createPublisher(amqpUrl, logger) {
   connection.on('close', () => markDisconnected());
   channel.on('error', (error) => {
     logger?.error?.({ err: error }, 'RabbitMQ channel error');
-    state.channel = null;
+    markDisconnected();
   });
   channel.on('close', () => {
     state.channel = null;
