@@ -10,6 +10,7 @@ const { correlationIdMiddleware } = require('../../../shared/middleware/correlat
 const { notFound, errorHandler } = require('../../../shared/middleware/errorHandler');
 const { createHealthHandlers } = require('../../../shared/middleware/health');
 const { createShutdownHandler } = require('../../../shared/middleware/shutdown');
+const { internalAuth } = require('../../../shared/middleware/internalAuth');
 const { ok, created } = require('../../../shared/utils/response');
 const { getMetricsFromDb } = require('./services/metricsService');
 const EventLog = require('./models/EventLog');
@@ -35,6 +36,7 @@ async function start() {
   const health = createHealthHandlers({ service: 'analytics', mongodb: config.mongoUri ? mongoose.connection : undefined });
   app.get('/health', health.live);
   app.get('/ready', health.ready);
+  app.use(internalAuth);
   app.post('/events', async (req, res) => {
     try {
       // Skip persistence if MongoDB not configured

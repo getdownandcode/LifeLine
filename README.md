@@ -197,6 +197,8 @@ LIFELINE_URL=http://localhost:3000
 JWT_SECRET=change_me_dev_secret_at_least_32_chars
 MONGO_PASSWORD=change_me_mongo
 INTERNAL_SERVICE_TOKEN=change_me_internal_token_16_chars
+# Gateway auth is enforced by default. Set REQUIRE_AUTH=0 only for local development.
+REQUIRE_AUTH=1
 MONGODB_URI=mongodb://admin:change_me_mongo@localhost:27017/lifeline?authSource=admin
 MONGO_MIN_POOL_SIZE=5
 MONGO_MAX_POOL_SIZE=20
@@ -207,6 +209,8 @@ STRICT_SECRET_VALIDATION=false
 
 Production startup validates service ports, dependency URLs, and required gateway secrets before a service listens. Set `STRICT_SECRET_VALIDATION=true` to enforce `JWT_SECRET` length of at least 32 characters and `INTERNAL_SERVICE_TOKEN` length of at least 16 characters.
 Mongo-backed services use `MONGO_MIN_POOL_SIZE` and `MONGO_MAX_POOL_SIZE` for Mongoose connection pools. They default to `5` and `20`, and each service can override them through its own environment.
+
+Gateway API routes require a `Authorization: Bearer <jwt>` header. The CLI and the web dashboard mint short-lived JWTs automatically from `JWT_SECRET`; use `lifeline token` when calling protected routes manually. Auth is enforced by default regardless of `NODE_ENV`; set `REQUIRE_AUTH=0` to disable it for local development only. Backing services additionally verify the gateway's `x-internal-token` header against `INTERNAL_SERVICE_TOKEN` (requests are allowed through when the variable is unset), and their `/health` and `/ready` endpoints stay public for probes.
 
 ## Operations
 

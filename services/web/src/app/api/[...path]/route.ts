@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:3000";
-const JWT_SECRET = process.env.JWT_SECRET || "change_me_dev_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "change_me_dev_secret_at_least_32_chars";
 const GATEWAY_TIMEOUT_MS = 10000;
 
 type RouteContext = {

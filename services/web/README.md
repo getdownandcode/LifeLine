@@ -21,11 +21,12 @@ When the backend is running through the repository `docker-compose.yml`, start
 the web app with:
 
 ```bash
-GATEWAY_URL=http://localhost:3000 JWT_SECRET=change_me_dev_secret npm run dev
+GATEWAY_URL=http://localhost:3001 JWT_SECRET=change_me_dev_secret_at_least_32_chars npm run dev
 ```
 
-If your root `.env` uses `JWT_SECRET=change_me_dev_secret_at_least_32_chars`,
-use that value instead. After running `lifeline demo seed`, the demo hospital id
+`docker-compose.yml` maps the gateway to host port `3001`, while port `3000` is
+the web app itself. If your root `.env` overrides `JWT_SECRET`, use that value
+instead. After running `lifeline demo seed`, the demo hospital id
 is `660000000000000000000101`.
 
 The production Docker image uses Next.js standalone output and serves the app on port `3000`.
