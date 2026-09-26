@@ -2,6 +2,10 @@
 
 LifeLine is a Node.js microservices platform for emergency blood inventory, organ donor matching, hospital notifications, analytics, and workflow orchestration. It includes a global `lifeline` command-line interface designed for day-to-day operator use.
 
+![LifeLine operator walkthrough: dashboard, emergency request, donor matching, inventory, and notifications](docs/demo.gif)
+
+*A narrated browser session covering the core operator workflow: creating an emergency request, running donor matching, updating hospital stock, and sending notifications. The same flow is available through the CLI with `lifeline demo run`.*
+
 ## Services
 
 - API Gateway: JWT authentication, rate limiting, and service proxying
