@@ -14,7 +14,8 @@ export default function NotificationsPage() {
   async function handleSms(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const recipient = String(formData.get("recipientId"));
 
     try {
@@ -26,7 +27,7 @@ export default function NotificationsPage() {
       setLogs((current) => [{ ...result, recipientId: recipient }, ...current]);
       setRecipientId(recipient);
       setMessage("SMS notification sent.");
-      event.currentTarget.reset();
+      form.reset();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "SMS notification failed.");
     }
@@ -35,7 +36,8 @@ export default function NotificationsPage() {
   async function handleBroadcast(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     try {
       const result = await sendNotification("broadcast", {
@@ -43,7 +45,7 @@ export default function NotificationsPage() {
       });
       setLogs((current) => [result, ...current]);
       setMessage("Broadcast sent.");
-      event.currentTarget.reset();
+      form.reset();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Broadcast failed.");
     }
@@ -93,7 +95,7 @@ export default function NotificationsPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Recipient Number</label>
-                <input name="to" type="tel" placeholder="+91 11111 11111" className="w-full rounded-xl border border-border p-2.5 text-sm" required />
+                <input name="to" type="tel" placeholder="+911111111111" className="w-full rounded-xl border border-border p-2.5 text-sm" required />
               </div>
             </div>
             <div className="space-y-1.5">
